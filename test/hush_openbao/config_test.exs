@@ -144,6 +144,19 @@ defmodule HushOpenbao.ConfigTest do
       assert error =~ "timeout must be a positive integer"
     end
 
+    test "validates server_type parameter" do
+      base_config = [base_url: "https://vault.example.com", token: "test"]
+
+      assert {:ok, config} = Config.load(base_config ++ [server_type: :vault])
+      assert config.server_type == :vault
+
+      assert {:ok, config} = Config.load(base_config ++ [server_type: "openbao"])
+      assert config.server_type == :openbao
+
+      assert {:error, error} = Config.load(base_config ++ [server_type: "invalid"])
+      assert error =~ "server_type must be 'openbao' or 'vault'"
+    end
+
     test "parses timeout from environment variable" do
       System.put_env("OPENBAO_ADDR", "http://localhost:8200")
       System.put_env("OPENBAO_TOKEN", "test-token")

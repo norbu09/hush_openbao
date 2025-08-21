@@ -1,7 +1,7 @@
 defmodule HushOpenbao.Client do
   @moduledoc """
   HTTP client for OpenBao and HashiCorp Vault APIs using Req.
-  
+
   This client supports both OpenBao and HashiCorp Vault since they share
   the same API structure (OpenBao is a fork of Vault).
   """

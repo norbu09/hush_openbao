@@ -10,7 +10,8 @@ defmodule HushOpenbao.ClientTest do
       mount_path: "secret",
       version: :v2,
       timeout: 30_000,
-      retry: [delay: 500, max_retries: 3]
+      retry: [delay: 500, max_retries: 3],
+      server_type: :openbao
     ]
 
     struct(Config, Keyword.merge(defaults, overrides))

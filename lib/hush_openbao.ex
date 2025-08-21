@@ -4,7 +4,7 @@ defmodule HushOpenbao do
 
   This library allows you to retrieve secrets from OpenBao or HashiCorp Vault at runtime,
   integrating seamlessly with Elixir's configuration system through Hush.
-  
+
   Both OpenBao and Vault are supported since they share the same API structure
   (OpenBao is a fork of Vault).
 

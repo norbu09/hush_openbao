@@ -4,9 +4,11 @@
 [![Coverage Status](https://img.shields.io/codecov/c/github/gordalina/hush_openbao?style=flat-square)](https://app.codecov.io/gh/gordalina/hush_openbao)
 [![hex.pm version](https://img.shields.io/hexpm/v/hush_openbao?style=flat-square)](https://hex.pm/packages/hush_openbao)
 
-An OpenBao provider for [Hush](https://hex.pm/packages/hush) - retrieve secrets from OpenBao at runtime.
+An OpenBao and HashiCorp Vault provider for [Hush](https://hex.pm/packages/hush) - retrieve secrets from OpenBao or Vault at runtime.
 
-HushOpenbao allows you to retrieve secrets from [OpenBao](https://openbao.org/) seamlessly within your Elixir application's configuration system, enabling secure secret management without hardcoding sensitive data.
+HushOpenbao allows you to retrieve secrets from [OpenBao](https://openbao.org/) or [HashiCorp Vault](https://www.vaultproject.io/) seamlessly within your Elixir application's configuration system, enabling secure secret management without hardcoding sensitive data.
+
+**🔄 Both OpenBao and Vault Supported**: Since OpenBao is a fork of Vault, both platforms share the same API structure and are fully supported by this library.
 
 ## Installation
 
@@ -23,13 +25,15 @@ end
 
 ## Quick Start
 
-### 1. Configure OpenBao Connection
+### 1. Configure OpenBao or Vault Connection
 
-Set up your OpenBao connection using environment variables:
+Set up your OpenBao or Vault connection using environment variables:
 
 ```bash
 export OPENBAO_ADDR="https://vault.example.com"
 export OPENBAO_TOKEN="hvs.your_token_here"
+# Optional: specify server type (defaults to "openbao")
+export OPENBAO_SERVER_TYPE="vault"  # or "openbao"
 ```
 
 Or via application configuration:
@@ -39,7 +43,8 @@ Or via application configuration:
 config :hush_openbao,
   config: [
     base_url: "https://vault.example.com",
-    token: "hvs.your_token_here"
+    token: "hvs.your_token_here",
+    server_type: :vault  # or :openbao (default)
   ]
 ```
 
@@ -53,7 +58,7 @@ config :hush,
   providers: [HushOpenbao.Provider]
 ```
 
-### 3. Use OpenBao Secrets in Configuration
+### 3. Use OpenBao or Vault Secrets in Configuration
 
 Reference secrets in your application configuration using the Hush tuple format:
 
@@ -99,9 +104,10 @@ end
 
 ### Environment Variables
 
-- `OPENBAO_ADDR` - OpenBao server URL (required)
+- `OPENBAO_ADDR` - OpenBao or Vault server URL (required)
 - `OPENBAO_TOKEN` - Authentication token (required if no token file)
 - `OPENBAO_TOKEN_FILE` - Path to file containing token (alternative to OPENBAO_TOKEN)
+- `OPENBAO_SERVER_TYPE` - Server type: "openbao" or "vault" (default: "openbao")
 - `OPENBAO_MOUNT_PATH` - KV secrets engine mount path (default: "secret")
 - `OPENBAO_KV_VERSION` - KV engine version: "v1" or "v2" (default: "v2")
 - `OPENBAO_TIMEOUT` - Request timeout in milliseconds (default: 30000)
@@ -114,12 +120,43 @@ config :hush_openbao,
     base_url: "https://vault.example.com",
     token: "hvs.your_token_here",
     # or token_file: "/var/run/secrets/vault-token"
+    server_type: :vault,  # or :openbao (default)
     mount_path: "secret",
     version: :v2,
     timeout: 30_000,
     retry: [delay: 500, max_retries: 3]
   ]
 ```
+
+## OpenBao vs Vault Compatibility
+
+This library supports both **OpenBao** and **HashiCorp Vault** with identical functionality:
+
+| Feature | OpenBao | Vault | Notes |
+|---------|---------|-------|--------|
+| **Authentication** | ✅ Token | ✅ Token | Same `X-Vault-Token` header |
+| **KV v1 Engine** | ✅ | ✅ | Identical API endpoints |
+| **KV v2 Engine** | ✅ | ✅ | Identical API endpoints |
+| **Error Handling** | ✅ | ✅ | Same HTTP status codes |
+| **Health Checks** | ✅ | ✅ | Same `/v1/sys/health` endpoint |
+
+### Configuration Examples
+
+**For OpenBao:**
+```bash
+export OPENBAO_ADDR="https://openbao.example.com"
+export OPENBAO_TOKEN="bao_..."
+export OPENBAO_SERVER_TYPE="openbao"  # default
+```
+
+**For HashiCorp Vault:**
+```bash
+export OPENBAO_ADDR="https://vault.example.com"
+export OPENBAO_TOKEN="hvs...."
+export OPENBAO_SERVER_TYPE="vault"
+```
+
+The `server_type` setting only affects error messages for better debugging - the API calls are identical.
 
 ## Supported Secret Engines
 
@@ -290,12 +327,20 @@ mix sobelow
 
 ## Examples
 
-### Basic Web Application
+### Basic Web Application with Vault
 
 ```elixir
 # config/prod.exs
 config :hush,
   providers: [HushOpenbao.Provider]
+
+# Configure for HashiCorp Vault
+config :hush_openbao,
+  config: [
+    base_url: "https://vault.company.com",
+    token: System.get_env("VAULT_TOKEN"),
+    server_type: :vault
+  ]
 
 config :myapp, MyApp.Repo,
   username: "myapp_user",
@@ -308,7 +353,7 @@ config :myapp, MyApp.ExternalAPI,
   webhook_secret: {:hush, HushOpenbao.Provider, "myapp/external/webhook_secret"}
 ```
 
-### Microservice with Multiple Secrets
+### Microservice with OpenBao
 
 ```elixir
 # config/runtime.exs (for releases)
@@ -317,6 +362,14 @@ import Config
 if config_env() == :prod do
   config :hush,
     providers: [HushOpenbao.Provider]
+
+  # Configure for OpenBao
+  config :hush_openbao,
+    config: [
+      base_url: System.get_env("OPENBAO_ADDR"),
+      token: System.get_env("OPENBAO_TOKEN"),
+      server_type: :openbao
+    ]
 
   config :myapp,
     # Database credentials
@@ -364,16 +417,33 @@ iex> HushOpenbao.Provider.load([
 
 ### Secret Path Issues
 
-Verify your secret paths match your OpenBao configuration:
-- KV v2: `/v1/{mount}/data/{path}`
-- KV v1: `/v1/{mount}/{path}`
+Verify your secret paths match your server configuration:
+- KV v2: `/v1/{mount}/data/{path}` (both OpenBao and Vault)
+- KV v1: `/v1/{mount}/{path}` (both OpenBao and Vault)
 
 ### Permission Issues
 
-Check your token has appropriate policies:
+**For OpenBao:**
+```bash
+bao token lookup  # Check token info  
+bao policy read your-policy  # Check policy permissions
+```
+
+**For HashiCorp Vault:**
 ```bash
 vault token lookup  # Check token info
 vault policy read your-policy  # Check policy permissions
+```
+
+### Server Type Configuration
+
+Make sure you set the correct server type for better error messages:
+```elixir
+# For OpenBao
+config :hush_openbao, config: [server_type: :openbao]
+
+# For Vault  
+config :hush_openbao, config: [server_type: :vault]
 ```
 
 ## Contributing
@@ -397,3 +467,4 @@ HushOpenbao is released under the Apache License 2.0 - see the [LICENSE](LICENSE
 - [hush_aws_secrets_manager](https://github.com/gordalina/hush_aws_secrets_manager) - AWS Secrets Manager provider
 - [hush_gcp_secret_manager](https://github.com/gordalina/hush_gcp_secret_manager) - Google Cloud Secret Manager provider
 - [OpenBao](https://openbao.org/) - Open source secrets management platform
+- [HashiCorp Vault](https://www.vaultproject.io/) - Enterprise secrets management platform

@@ -5,10 +5,13 @@
 # This script demonstrates how to use HushOpenbao to fetch secrets from OpenBao
 # 
 # Prerequisites:
-# 1. OpenBao server running (or use docker: docker run --rm -p 8200:8200 openbao/openbao:latest server -dev)
+# 1. OpenBao/Vault server running 
+#    OpenBao: docker run --rm -p 8200:8200 openbao/openbao:latest server -dev
+#    Vault: docker run --rm -p 8200:8200 vault:latest server -dev
 # 2. Environment variables set:
 #    export OPENBAO_ADDR="http://localhost:8200" 
 #    export OPENBAO_TOKEN="your-dev-root-token"
+#    export OPENBAO_SERVER_TYPE="vault"  # or "openbao"
 #
 # Usage: elixir examples/basic_usage.exs
 
@@ -35,8 +38,9 @@ Application.put_env(:example_app, :external_api,
   base_url: {:hush, HushOpenbao.Provider, "myapp/api/url", default: "https://api.example.com"}
 )
 
-# Load secrets from OpenBao
-IO.puts("🔐 Loading secrets from OpenBao...")
+# Load secrets from OpenBao or Vault
+server_type = System.get_env("OPENBAO_SERVER_TYPE", "openbao")
+IO.puts("🔐 Loading secrets from #{String.capitalize(server_type)}...")
 
 try do
   # Resolve all configuration containing Hush tuples
@@ -68,10 +72,11 @@ rescue
   error ->
     IO.puts("❌ Failed to load secrets: #{inspect(error)}")
     IO.puts("\n💡 Make sure you have:")
-    IO.puts("  1. OpenBao server running")
+    IO.puts("  1. #{String.capitalize(server_type)} server running")
     IO.puts("  2. OPENBAO_ADDR environment variable set")  
     IO.puts("  3. OPENBAO_TOKEN environment variable set")
-    IO.puts("  4. Secrets stored in OpenBao at the expected paths:")
+    IO.puts("  4. OPENBAO_SERVER_TYPE set to \"#{server_type}\"")
+    IO.puts("  5. Secrets stored in #{String.capitalize(server_type)} at the expected paths:")
     IO.puts("     - myapp/database/password")
     IO.puts("     - myapp/api/key")
     IO.puts("\n📖 See examples/setup_secrets.sh to create test secrets")

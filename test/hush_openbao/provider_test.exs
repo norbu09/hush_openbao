@@ -50,7 +50,8 @@ defmodule HushOpenbao.ProviderTest do
         mount_path: "secret",
         version: :v2,
         timeout: 30_000,
-        retry: []
+        retry: [],
+        server_type: :openbao
       }
 
       # Store config in process dictionary
