@@ -1,0 +1,77 @@
+defmodule HushOpenbao.MixProject do
+  use Mix.Project
+
+  @version "0.1.0"
+  @source_url "https://github.com/gordalina/hush_openbao"
+
+  def project do
+    [
+      app: :hush_openbao,
+      version: @version,
+      elixir: "~> 1.12",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      docs: docs(),
+      description: description(),
+      package: package(),
+      source_url: @source_url,
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.github": :test,
+        "coveralls.html": :test,
+        "coveralls.json": :test
+      ],
+      dialyzer: [
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
+      ]
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      {:hush, "~> 1.2"},
+      {:req, "~> 0.5"},
+      {:jason, "~> 1.4"},
+      {:mox, "~> 1.1", only: :test},
+      {:ex_check, "~> 0.12", only: :dev, runtime: false},
+      {:credo, "~> 1.4", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
+      {:sobelow, "~> 0.10", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.12", only: :test}
+    ]
+  end
+
+  defp description do
+    """
+    An OpenBao Provider for Hush - retrieve secrets from OpenBao at runtime
+    """
+  end
+
+  defp package do
+    [
+      name: "hush_openbao",
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => @source_url}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: [
+        "README.md"
+      ],
+      source_ref: "v#{@version}",
+      source_url: @source_url
+    ]
+  end
+end
